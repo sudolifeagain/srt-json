@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SRT → JSON 変換ツール</title>
+    <title data-i18n-key="pageTitle">SRT → JSON 変換ツール</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="color-scheme" content="dark" />
     <style>
@@ -18,31 +18,38 @@
     <main class="w-full max-w-2xl">
       <section id="dropZone" class="bg-slate-800/60 rounded-2xl shadow-xl ring-1 ring-white/10 backdrop-blur p-6 sm:p-8 transition-shadow duration-200">
         <header class="mb-6">
-          <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">SRT → JSON 変換ツール</h1>
-          <p class="mt-2 text-slate-300 text-sm">ブラウザだけで完結。SRT を指定形式の JSON に変換してダウンロードできます。</p>
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight" data-i18n-key="mainTitle">SRT → JSON 変換ツール</h1>
+              <p class="mt-2 text-slate-300 text-sm" data-i18n-key="description">ブラウザだけで完結。SRT を指定形式の JSON に変換してダウンロードできます。</p>
+            </div>
+            <button id="lang-switcher" class="px-3 py-1.5 rounded-lg text-sm bg-slate-700/50 hover:bg-slate-700 transition">
+              English
+            </button>
+          </div>
         </header>
 
         <div class="space-y-4">
           <!-- アップロードエリア -->
           <div>
-            <label for="srtInput" class="block text-sm font-medium text-slate-200">SRTファイルを選択、またはここにドラッグ＆ドロップ</label>
+            <label for="srtInput" class="block text-sm font-medium text-slate-200" data-i18n-key="fileLabel">SRTファイルを選択、またはここにドラッグ＆ドロップ</label>
             <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_auto_auto] items-center">
               <input id="srtInput" type="file" accept=".srt" class="file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-600 file:text-white file:cursor-pointer file:hover:bg-indigo-500 file:transition w-full text-sm bg-slate-900/60 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2" />
-              <button id="convertBtn" class="px-4 py-2 rounded-xl bg-indigo-600/60 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-600 transition" disabled>
+              <button id="convertBtn" class="px-4 py-2 rounded-xl bg-indigo-600/60 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-600 transition" data-i18n-key="convertButton">
                 変換
               </button>
-              <button id="clearBtn" class="hidden px-4 py-2 rounded-xl bg-slate-600/60 text-white hover:bg-slate-600 transition">
+              <button id="clearBtn" class="hidden px-4 py-2 rounded-xl bg-slate-600/60 text-white hover:bg-slate-600 transition" data-i18n-key="clearButton">
                 クリア
               </button>
             </div>
-            <p id="fileName" class="mt-2 text-xs text-slate-400 line-clamp-1">ファイル未選択</p>
+            <p id="fileName" class="mt-2 text-xs text-slate-400 line-clamp-1" data-i18n-key="fileNameDefault">ファイル未選択</p>
           </div>
 
           <!-- 出力フォーマット設定 -->
           <div>
-            <label for="formatTemplate" class="block text-sm font-medium text-slate-200">出力フォーマットテンプレート</label>
+            <label for="formatTemplate" class="block text-sm font-medium text-slate-200" data-i18n-key="templateLabel">出力フォーマットテンプレート</label>
             <textarea id="formatTemplate" class="mt-2 w-full h-32 bg-slate-900/60 rounded-xl border border-slate-700 p-3 text-sm font-mono whitespace-pre resize-y" spellcheck="false"></textarea>
-            <p class="mt-2 text-xs text-slate-400">
+            <p class="mt-2 text-xs text-slate-400" data-i18n-key="templateDescription">
               各字幕エントリのJSON形式を定義します。利用可能な変数: 
               <code class="bg-slate-900 rounded p-1">{{index}}</code>, 
               <code class="bg-slate-900 rounded p-1">{{startTime}}</code>, 
@@ -55,122 +62,115 @@
 
           <!-- 結果とダウンロード -->
           <div class="flex items-center gap-3">
-            <button id="downloadBtn" class="hidden px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition">
+            <button id="downloadBtn" class="hidden px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition" data-i18n-key="downloadButton">
               JSONをダウンロード
             </button>
             <button id="copyBtn" class="hidden px-4 py-2 rounded-xl bg-sky-600 text-white hover:bg-sky-500 transition flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              <span id="copyBtnText">コピー</span>
+              <span id="copyBtnText" data-i18n-key="copyButton">コピー</span>
             </button>
             <span id="statusMsg" class="text-sm text-slate-300"></span>
           </div>
 
           <!-- JSONプレビュー -->
           <div>
-            <label for="preview" class="block text-sm font-medium text-slate-200">プレビュー</label>
-            <textarea id="preview" class="mt-2 w-full h-56 bg-slate-900/60 rounded-xl border border-slate-700 p-3 text-sm font-mono whitespace-pre resize-y" placeholder="ここに変換結果のJSONが表示されます" readonly></textarea>
+            <label for="preview" class="block text-sm font-medium text-slate-200" data-i18n-key="previewLabel">プレビュー</label>
+            <textarea id="preview" class="mt-2 w-full h-56 bg-slate-900/60 rounded-xl border border-slate-700 p-3 text-sm font-mono whitespace-pre resize-y" data-i18n-placeholder-key="previewPlaceholder" placeholder="ここに変換結果のJSONが表示されます" readonly></textarea>
           </div>
         </div>
 
         <footer class="mt-6 pt-4 border-t border-slate-700/60 text-xs text-slate-400">
-          <p>処理はすべてローカル（ブラウザ内）で行われ、サーバーにファイルはアップロードされません。</p>
+          <p data-i18n-key="footerText">処理はすべてローカル（ブラウザ内）で行われ、サーバーにファイルはアップロードされません。</p>
         </footer>
       </section>
     </main>
 
     <script>
-      /**
-       * SRTのタイムスタンプ文字列 (HH:MM:SS,ms) を秒に変換する
-       * @param {string} timeStr - タイムスタンプ文字列
-       * @returns {number} - 秒数
-       */
-      const timeToSeconds = (timeStr) => {
-        const parts = timeStr.split(/[,.]/);
-        const hms = parts[0];
-        const ms = parts[1] || '0';
-        const [h, m, s] = hms.split(':').map(Number);
-        return h * 3600 + m * 60 + s + parseFloat(`0.${ms}`);
-      };
-
-      /**
-       * SRTテキストを解析し、詳細な情報を持つオブジェクトの配列を返す
-       * @param {string} srtText - SRTファイルのテキストコンテンツ
-       * @returns {Array<Object>} - 字幕データの配列
-       */
-      const parseSrtRich = (srtText) => {
-        const entries = [];
-        const blocks = srtText.trim().replace(/\r/g, '').split('\n\n');
-        
-        for (const block of blocks) {
-          const lines = block.split('\n');
-          if (lines.length < 2) continue;
-
-          const indexMatch = lines[0].match(/^\d+$/);
-          if (!indexMatch) continue;
-          
-          const timeLineMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
-          if (!timeLineMatch) continue;
-
-          const [_, startTime, endTime] = timeLineMatch;
-          const text = lines.slice(2).join('\n').trim();
-
-          if (text) {
-            entries.push({
-              index: parseInt(indexMatch[0], 10),
-              startTime,
-              endTime,
-              startSeconds: timeToSeconds(startTime),
-              endSeconds: timeToSeconds(endTime),
-              text,
-            });
-          }
-        }
-        return entries;
-      };
+      const timeToSeconds = (timeStr) => { const parts = timeStr.split(/[,.]/); const hms = parts[0]; const ms = parts[1] || '0'; const [h, m, s] = hms.split(':').map(Number); return h * 3600 + m * 60 + s + parseFloat(`0.${ms}`); };
+      const parseSrtRich = (srtText) => { const entries = []; const blocks = srtText.trim().replace(/\r/g, '').split('\n\n'); for (const block of blocks) { const lines = block.split('\n'); if (lines.length < 2) continue; const indexMatch = lines[0].match(/^\d+$/); if (!indexMatch) continue; const timeLineMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/); if (!timeLineMatch) continue; const [_, startTime, endTime] = timeLineMatch; const text = lines.slice(2).join('\n').trim(); if (text) { entries.push({ index: parseInt(indexMatch[0], 10), startTime, endTime, startSeconds: timeToSeconds(startTime), endSeconds: timeToSeconds(endTime), text, }); } } return entries; };
 
       /**
        * アプリケーションのエントリーポイント
        */
       function main() {
+        // --- i18n (国際化) ---
+        const translations = {
+          ja: {
+            pageTitle: "SRT → JSON 変換ツール",
+            mainTitle: "SRT → JSON 変換ツール",
+            description: "ブラウザだけで完結。SRT を指定形式の JSON に変換してダウンロードできます。",
+            fileLabel: "SRTファイルを選択、またはここにドラッグ＆ドロップ",
+            convertButton: "変換",
+            clearButton: "クリア",
+            fileNameDefault: "ファイル未選択",
+            templateLabel: "出力フォーマットテンプレート",
+            templateDescription: "各字幕エントリのJSON形式を定義します。利用可能な変数: {{index}}, {{startTime}}, {{endTime}}, {{startSeconds}}, {{endSeconds}}, {{text}}",
+            downloadButton: "JSONをダウンロード",
+            copyButton: "コピー",
+            previewLabel: "プレビュー",
+            previewPlaceholder: "ここに変換結果のJSONが表示されます",
+            footerText: "処理はすべてローカル（ブラウザ内）で行われ、サーバーにファイルはアップロードされません。",
+            statusConverting: "変換中…",
+            statusSuccess: "変換完了！",
+            statusNoEntries: "変換できるエントリが見つかりませんでした。",
+            statusTemplateError: "エラー: 出力テンプレートのJSON形式が正しくありません。",
+            statusFileError: "エラーが発生しました。ファイル形式を確認してください。",
+            statusDropError: "SRTファイルのみドロップできます。",
+            copySuccess: "コピーしました！",
+            copyError: "コピーに失敗しました。",
+          },
+          en: {
+            pageTitle: "SRT to JSON Converter",
+            mainTitle: "SRT to JSON Converter",
+            description: "Convert SRT files to a custom JSON format, right in your browser.",
+            fileLabel: "Select an SRT file or drag and drop it here",
+            convertButton: "Convert",
+            clearButton: "Clear",
+            fileNameDefault: "No file selected",
+            templateLabel: "Output Format Template",
+            templateDescription: "Define the JSON format for each subtitle entry. Available variables: {{index}}, {{startTime}}, {{endTime}}, {{startSeconds}}, {{endSeconds}}, {{text}}",
+            downloadButton: "Download JSON",
+            copyButton: "Copy",
+            previewLabel: "Preview",
+            previewPlaceholder: "The converted JSON will be displayed here",
+            footerText: "All processing is done locally in your browser. No files are uploaded to any server.",
+            statusConverting: "Converting...",
+            statusSuccess: "Conversion complete!",
+            statusNoEntries: "No convertible entries found.",
+            statusTemplateError: "Error: The output template has an invalid JSON format.",
+            statusFileError: "An error occurred. Please check the file format.",
+            statusDropError: "Only SRT files can be dropped.",
+            copySuccess: "Copied!",
+            copyError: "Failed to copy.",
+          }
+        };
+
         // --- 1. State (状態) ---
         const state = {
+          lang: 'ja',
           file: null, isConverting: false, isDragging: false,
-          statusMessage: '', jsonContent: null, blobUrl: null,
-          copyButtonText: 'コピー',
+          statusMessageKey: '', jsonContent: null, blobUrl: null,
+          copyButtonTextKey: 'copyButton',
           get downloadName() {
             if (!this.file) return 'result.json';
             return `${this.file.name.replace(/\.srt$/i, '')}.json`;
           },
         };
-
+        
         // --- 2. Services (UIに依存しないコアロジック) ---
         const services = {
-          readFileAsText(file) { /* ... (変更なし) ... */ return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsText(file, 'utf-8'); }); },
-          createBlobUrl(jsonContent) { /* ... (変更なし) ... */ if (state.blobUrl) URL.revokeObjectURL(state.blobUrl); const blob = new Blob([jsonContent], { type: 'application/json' }); return URL.createObjectURL(blob); },
-          triggerDownload(url, filename) { /* ... (変更なし) ... */ const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); },
-          async copyToClipboard(text) { /* ... (変更なし) ... */ if (!navigator.clipboard) { throw new Error('Clipboard API not supported'); } await navigator.clipboard.writeText(text); },
-          
-          /** テンプレートとデータからJSONオブジェクトを生成する */
-          applyTemplate(template, data) {
-            // {{text}} プレースホルダーを、JSON文字列として安全な値に置き換えるための特別なトークンに一時的に変更
-            const textToken = `"__TEXT_PLACEHOLDER__"`;
-            let processedTemplate = template.replace(/"\{\{text\}\}"/g, textToken);
-
-            // 残りのプレースホルダーを置き換える
-            processedTemplate = processedTemplate.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-              return data.hasOwnProperty(key) ? data[key] : match;
-            });
-            
-            // トークンを実際のテキストで置き換える
-            const finalString = processedTemplate.replace(textToken, JSON.stringify(data.text));
-
-            return JSON.parse(finalString); // JSONとして有効か検証
-          }
+          readFileAsText(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsText(file, 'utf-8'); }); },
+          createBlobUrl(jsonContent) { if (state.blobUrl) URL.revokeObjectURL(state.blobUrl); const blob = new Blob([jsonContent], { type: 'application/json' }); return URL.createObjectURL(blob); },
+          triggerDownload(url, filename) { const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); },
+          async copyToClipboard(text) { if (!navigator.clipboard) { throw new Error('Clipboard API not supported'); } await navigator.clipboard.writeText(text); },
+          applyTemplate(template, data) { const textToken = `"__TEXT_PLACEHOLDER__"`; let processedTemplate = template.replace(/"\{\{text\}\}"/g, textToken); processedTemplate = processedTemplate.replace(/\{\{(\w+)\}\}/g, (match, key) => { return data.hasOwnProperty(key) ? data[key] : match; }); const finalString = processedTemplate.replace(textToken, JSON.stringify(data.text)); return JSON.parse(finalString); }
         };
 
         // --- 3. View (UIの描画) ---
         const view = {
           elements: {
+            html: document.documentElement,
+            langSwitcher: document.getElementById('lang-switcher'),
             dropZone: document.getElementById('dropZone'),
             srtInput: document.getElementById('srtInput'),
             convertBtn: document.getElementById('convertBtn'),
@@ -183,24 +183,49 @@
             preview: document.getElementById('preview'),
             formatTemplate: document.getElementById('formatTemplate'),
           },
-          render() { /* ... (変更なし、新しい要素は静的なので描画ロジック不要) ... */ const { file, isConverting, isDragging, statusMessage, jsonContent, blobUrl, copyButtonText } = state; this.elements.fileNameEl.textContent = file ? file.name : 'ファイル未選択'; this.elements.convertBtn.disabled = !file || isConverting; this.elements.clearBtn.classList.toggle('hidden', !file); this.elements.statusMsg.textContent = statusMessage; this.elements.preview.value = jsonContent || ''; const hasResult = !!blobUrl; this.elements.downloadBtn.classList.toggle('hidden', !hasResult); this.elements.copyBtn.classList.toggle('hidden', !hasResult); this.elements.copyBtnText.textContent = copyButtonText; this.elements.dropZone.classList.toggle('drag-over', isDragging); },
-          setDefaultTemplate() {
-            this.elements.formatTemplate.value = JSON.stringify({
-              time: "{{startTime}}",
-              text: "{{text}}"
-            }, null, 2);
-          }
+          translateUI() {
+            const lang = state.lang;
+            this.elements.html.lang = lang;
+            
+            document.querySelectorAll('[data-i18n-key]').forEach(el => {
+              const key = el.dataset.i18nKey;
+              el.textContent = translations[lang][key] || el.textContent;
+            });
+            document.querySelectorAll('[data-i18n-placeholder-key]').forEach(el => {
+              const key = el.dataset.i18nPlaceholderKey;
+              el.placeholder = translations[lang][key] || el.placeholder;
+            });
+
+            this.elements.langSwitcher.textContent = lang === 'ja' ? 'English' : '日本語';
+          },
+          render() {
+            const { file, isConverting, isDragging, statusMessageKey, jsonContent, blobUrl, copyButtonTextKey } = state;
+            
+            this.elements.fileNameEl.textContent = file ? file.name : translations[state.lang]['fileNameDefault'];
+            this.elements.convertBtn.disabled = !file || isConverting;
+            this.elements.clearBtn.classList.toggle('hidden', !file);
+            this.elements.statusMsg.textContent = statusMessageKey ? translations[state.lang][statusMessageKey] : '';
+            this.elements.preview.value = jsonContent || '';
+            
+            const hasResult = !!blobUrl;
+            this.elements.downloadBtn.classList.toggle('hidden', !hasResult);
+            this.elements.copyBtn.classList.toggle('hidden', !hasResult);
+            this.elements.copyBtnText.textContent = translations[state.lang][copyButtonTextKey];
+            
+            this.elements.dropZone.classList.toggle('drag-over', isDragging);
+          },
+          setDefaultTemplate() { this.elements.formatTemplate.value = JSON.stringify({ time: "{{startTime}}", text: "{{text}}" }, null, 2); }
         };
 
         // --- 4. Controller (イベントとロジックの結合) ---
         const controller = {
-          _setFile(file) { /* ... (変更なし) ... */ state.file = file; state.isConverting = false; state.statusMessage = ''; state.jsonContent = null; if (state.blobUrl) URL.revokeObjectURL(state.blobUrl); state.blobUrl = null; view.render(); },
-          handleFileChange(event) { /* ... (変更なし) ... */ const file = event.target.files?.[0] || null; controller._setFile(file); },
+          _setFile(file) { state.file = file; state.isConverting = false; state.statusMessageKey = ''; state.jsonContent = null; if (state.blobUrl) URL.revokeObjectURL(state.blobUrl); state.blobUrl = null; view.render(); },
+          handleFileChange(event) { const file = event.target.files?.[0] || null; controller._setFile(file); },
           async handleConvert() {
             if (!state.file || state.isConverting) return;
 
             state.isConverting = true;
-            state.statusMessage = '変換中…';
+            state.statusMessageKey = 'statusConverting';
             view.render();
 
             try {
@@ -209,39 +234,57 @@
               const template = view.elements.formatTemplate.value;
 
               if (!srtEntries?.length) {
-                state.statusMessage = '変換できるエントリが見つかりませんでした。';
-                return;
+                state.statusMessageKey = 'statusNoEntries';
+              } else {
+                const results = srtEntries.map(entry => services.applyTemplate(template, entry));
+                state.jsonContent = JSON.stringify(results, null, 2);
+                state.blobUrl = services.createBlobUrl(state.jsonContent);
+                state.statusMessageKey = 'statusSuccess';
               }
-
-              const results = [];
-              for (const entry of srtEntries) {
-                // テンプレートを各エントリに適用
-                const jsonObj = services.applyTemplate(template, entry);
-                results.push(jsonObj);
-              }
-
-              state.jsonContent = JSON.stringify(results, null, 2);
-              state.blobUrl = services.createBlobUrl(state.jsonContent);
-              state.statusMessage = '変換完了！';
-
             } catch (error) {
               console.error('Conversion Error:', error);
-              if (error instanceof SyntaxError) {
-                state.statusMessage = 'エラー: 出力テンプレートのJSON形式が正しくありません。';
-              } else {
-                state.statusMessage = 'エラーが発生しました。ファイル形式を確認してください。';
-              }
+              state.statusMessageKey = error instanceof SyntaxError ? 'statusTemplateError' : 'statusFileError';
             } finally {
               state.isConverting = false;
               view.render();
             }
           },
-          handleDownload() { /* ... (変更なし) ... */ if (!state.blobUrl) return; services.triggerDownload(state.blobUrl, state.downloadName); },
-          async handleCopy() { /* ... (変更なし) ... */ if (!state.jsonContent) return; try { await services.copyToClipboard(state.jsonContent); state.copyButtonText = 'コピーしました！'; view.render(); setTimeout(() => { state.copyButtonText = 'コピー'; view.render(); }, 2000); } catch (err) { state.statusMessage = 'コピーに失敗しました。'; view.render(); } },
-          handleClear() { /* ... (変更なし) ... */ view.elements.srtInput.value = ''; controller._setFile(null); },
-          handleDragOver(event) { /* ... (変更なし) ... */ event.preventDefault(); state.isDragging = true; view.render(); },
-          handleDragLeave(event) { /* ... (変更なし) ... */ event.preventDefault(); state.isDragging = false; view.render(); },
-          handleDrop(event) { /* ... (変更なし) ... */ event.preventDefault(); state.isDragging = false; const file = event.dataTransfer?.files?.[0]; if (file && file.name.toLowerCase().endsWith('.srt')) { view.elements.srtInput.files = event.dataTransfer.files; controller._setFile(file); } else { state.statusMessage = 'SRTファイルのみドロップできます。'; view.render(); } },
+          handleDownload() { if (!state.blobUrl) return; services.triggerDownload(state.blobUrl, state.downloadName); },
+          async handleCopy() {
+            if (!state.jsonContent) return;
+            try {
+              await services.copyToClipboard(state.jsonContent);
+              state.copyButtonTextKey = 'copySuccess';
+              view.render();
+              setTimeout(() => {
+                state.copyButtonTextKey = 'copyButton';
+                view.render();
+              }, 2000);
+            } catch (err) {
+              state.statusMessageKey = 'copyError';
+              view.render();
+            }
+          },
+          handleClear() { view.elements.srtInput.value = ''; controller._setFile(null); },
+          handleDragOver(event) { event.preventDefault(); state.isDragging = true; view.render(); },
+          handleDragLeave(event) { event.preventDefault(); state.isDragging = false; view.render(); },
+          handleDrop(event) {
+            event.preventDefault();
+            state.isDragging = false;
+            const file = event.dataTransfer?.files?.[0];
+            if (file && file.name.toLowerCase().endsWith('.srt')) {
+              view.elements.srtInput.files = event.dataTransfer.files;
+              controller._setFile(file);
+            } else {
+              state.statusMessageKey = 'statusDropError';
+              view.render();
+            }
+          },
+          handleLangSwitch() {
+            state.lang = state.lang === 'ja' ? 'en' : 'ja';
+            view.translateUI();
+            view.render();
+          }
         };
 
         // --- 初期化 ---
@@ -251,11 +294,17 @@
         elements.downloadBtn.addEventListener('click', controller.handleDownload);
         elements.copyBtn.addEventListener('click', controller.handleCopy);
         elements.clearBtn.addEventListener('click', controller.handleClear);
+        elements.langSwitcher.addEventListener('click', controller.handleLangSwitch);
+        
         elements.dropZone.addEventListener('dragover', controller.handleDragOver);
         elements.dropZone.addEventListener('dragleave', controller.handleDragLeave);
         elements.dropZone.addEventListener('drop', controller.handleDrop);
 
+        const userLang = navigator.language || navigator.userLanguage;
+        state.lang = userLang.startsWith('ja') ? 'ja' : 'en';
+        
         view.setDefaultTemplate();
+        view.translateUI();
         view.render();
       }
 
