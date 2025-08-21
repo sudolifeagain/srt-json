@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ja" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SRT → JSON 変換ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="color-scheme" content="dark" />
+  </head>
+  <body class="min-h-screen bg-slate-900 text-slate-100 antialiased flex items-center justify-center p-6">
+    <main class="w-full max-w-2xl">
+      <section class="bg-slate-800/60 rounded-2xl shadow-xl ring-1 ring-white/10 backdrop-blur p-6 sm:p-8">
+        <header class="mb-6">
+          <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">SRT → JSON 変換ツール</h1>
+          <p class="mt-2 text-slate-300 text-sm">ブラウザだけで完結。SRT を指定形式の JSON に変換してダウンロードできます。</p>
+        </header>
+
+        <!-- アップロードエリア -->
+        <div class="space-y-4">
+          <div>
+            <label for="srtInput" class="block text-sm font-medium text-slate-200">SRTファイルを選択</label>
+            <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] items-center">
+              <input id="srtInput" type="file" accept=".srt" class="file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-600 file:text-white file:cursor-pointer file:hover:bg-indigo-500 file:transition w-full text-sm bg-slate-900/60 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2" />
+              <button id="convertBtn" class="px-4 py-2 rounded-xl bg-indigo-600/60 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-600 transition" disabled>
+                変換
+              </button>
+            </div>
+            <p id="fileName" class="mt-2 text-xs text-slate-400 line-clamp-1">ファイル未選択</p>
+          </div>
+
+          <!-- 結果とダウンロード -->
+          <div class="flex items-center gap-3">
+            <button id="downloadBtn" class="hidden px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition">
+              JSONをダウンロード
+            </button>
+            <span id="statusMsg" class="text-sm text-slate-300"></span>
+          </div>
+
+          <!-- JSONプレビュー（任意） -->
+          <div>
+            <label for="preview" class="block text-sm font-medium text-slate-200">プレビュー</label>
+            <textarea id="preview" class="mt-2 w-full h-56 bg-slate-900/60 rounded-xl border border-slate-700 p-3 text-sm font-mono whitespace-pre resize-y" placeholder="ここに変換結果のJSONが表示されます" readonly></textarea>
+          </div>
+        </div>
+
+        <footer class="mt-6 pt-4 border-t border-slate-700/60 text-xs text-slate-400">
+          <p>処理はすべてローカル（ブラウザ内）で行われ、サーバーにファイルはアップロードされません。</p>
+        </footer>
+      </section>
+    </main>
+
+    <script>
+      // ====== 仕様で指定された parseSrt 関数（原文のまま） ======
+      const parseSrt = (srtText) => {
+        const secondsToHHMMSS = (totalSeconds) => {
+          const roundedSeconds = Math.round(totalSeconds);
+          const hours = Math.floor(roundedSeconds / 3600);
+          const minutes = Math.floor((roundedSeconds % 3600) / 60);
+          const seconds = roundedSeconds % 60;
+          const pad = (num) => String(num).padStart(2, '0');
+          return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+        };
+        const timeToSeconds = (timeStr) => {
+          const parts = timeStr.split(/[,.]/);
+          const hms = parts[0];
+          const ms = parts[1] || '0';
+          const [h, m, s] = hms.split(':').map(Number);
+          return h * 3600 + m * 60 + s + Number(ms) / 1000;
+        };
+        const entries = [];
+        const blocks = srtText.trim().replace(/\r/g, '').split('\n\n');
+        for (const block of blocks) {
+          const lines = block.split('\n');
+          if (lines.length < 2 || !/^\d+$/.test(lines[0])) continue;
+          const timeLine = lines[1];
+          const [startStr] = timeLine.split(' --> ');
+          const text = lines.slice(2).join(' ').trim();
+          if (startStr && text) {
+            try {
+              const startTimeInSeconds = timeToSeconds(startStr.trim());
+              entries.push({
+                time: secondsToHHMMSS(startTimeInSeconds),
+                text: text,
+              });
+            } catch (e) { /* skip */ }
+          }
+        }
+        return entries;
+      };
+      // ====== ここまで指定関数 ======
+
+      /**
+       * アプリケーションのエントリーポイント
+       */
+      function main() {
+        // --- 1. State (状態) ---
+        // アプリケーションの状態を一元管理するオブジェクト
+        const state = {
+          file: null,
+          isConverting: false,
+          statusMessage: '',
+          jsonContent: null,
+          blobUrl: null,
+          get downloadName() {
+            if (!this.file) return 'result.json';
+            const baseName = this.file.name.replace(/\.srt$/i, '');
+            return `${baseName}.json`;
+          },
+        };
+
+        // --- 2. Services (UIに依存しないコアロジック) ---
+        const services = {
+          /** ファイルをテキストとして非同期に読み込む */
+          readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(reader.error);
+              reader.readAsText(file, 'utf-8');
+            });
+          },
+          /** Blob URLを生成し、古いものを破棄する */
+          createBlobUrl(jsonContent) {
+            if (state.blobUrl) {
+              URL.revokeObjectURL(state.blobUrl);
+            }
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            return URL.createObjectURL(blob);
+          },
+          /** ダウンロードをトリガーする */
+          triggerDownload(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          },
+        };
+
+        // --- 3. View (UIの描画) ---
+        const view = {
+          // DOM要素への参照
+          elements: {
+            srtInput: document.getElementById('srtInput'),
+            convertBtn: document.getElementById('convertBtn'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            fileNameEl: document.getElementById('fileName'),
+            statusMsg: document.getElementById('statusMsg'),
+            preview: document.getElementById('preview'),
+          },
+          /** 現在のstateに基づいてUI全体を再描画する */
+          render() {
+            const { file, isConverting, statusMessage, jsonContent, blobUrl } = state;
+            
+            // ファイル名表示
+            this.elements.fileNameEl.textContent = file ? file.name : 'ファイル未選択';
+            
+            // 変換ボタンの状態
+            this.elements.convertBtn.disabled = !file || isConverting;
+            
+            // ステータスメッセージ
+            this.elements.statusMsg.textContent = statusMessage;
+            
+            // プレビュー表示
+            this.elements.preview.value = jsonContent || '';
+            
+            // ダウンロードボタンの表示/非表示
+            this.elements.downloadBtn.classList.toggle('hidden', !blobUrl);
+          },
+        };
+
+        // --- 4. Controller (イベントとロジックの結合) ---
+        const controller = {
+          /** ファイル選択時の処理 */
+          async handleFileChange(event) {
+            state.file = event.target.files?.[0] || null;
+            state.isConverting = false;
+            state.statusMessage = '';
+            state.jsonContent = null;
+            state.blobUrl = services.createBlobUrl(''); // 古いURLを破棄
+            URL.revokeObjectURL(state.blobUrl);
+            state.blobUrl = null;
+            
+            view.render();
+          },
+          /** 変換ボタンクリック時の処理 */
+          async handleConvert() {
+            if (!state.file || state.isConverting) return;
+
+            state.isConverting = true;
+            state.statusMessage = '変換中…';
+            view.render();
+
+            try {
+              const srtText = await services.readFileAsText(state.file);
+              const jsonData = parseSrt(srtText);
+
+              if (!jsonData?.length) {
+                state.statusMessage = '変換できるエントリが見つかりませんでした。';
+                state.jsonContent = null;
+                state.blobUrl = null;
+              } else {
+                state.jsonContent = JSON.stringify(jsonData, null, 2);
+                state.blobUrl = services.createBlobUrl(state.jsonContent);
+                state.statusMessage = '変換完了！「JSONをダウンロード」をクリックしてください。';
+              }
+            } catch (error) {
+              console.error('Conversion Error:', error);
+              state.statusMessage = 'エラーが発生しました。ファイル形式を確認してください。';
+              state.jsonContent = null;
+              state.blobUrl = null;
+            } finally {
+              state.isConverting = false;
+              view.render();
+            }
+          },
+          /** ダウンロードボタンクリック時の処理 */
+          handleDownload() {
+            if (!state.blobUrl) return;
+            services.triggerDownload(state.blobUrl, state.downloadName);
+          },
+        };
+
+        // --- 初期化 ---
+        // イベントリスナーをセットアップ
+        view.elements.srtInput.addEventListener('change', controller.handleFileChange);
+        view.elements.convertBtn.addEventListener('click', controller.handleConvert);
+        view.elements.downloadBtn.addEventListener('click', controller.handleDownload);
+
+        // 初期描画
+        view.render();
+      }
+
+      // アプリケーションを実行
+      main();
+    </script>
+  </body>
+</html>
