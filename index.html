@@ -6,10 +6,17 @@
     <title>SRT → JSON 変換ツール</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="color-scheme" content="dark" />
+    <style>
+      /* ドラッグ中のスタイル */
+      .drag-over {
+        transition: box-shadow 0.2s ease-in-out;
+        box-shadow: 0 0 0 3px #4f46e5; /* Tailwind indigo-600 */
+      }
+    </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 antialiased flex items-center justify-center p-6">
     <main class="w-full max-w-2xl">
-      <section class="bg-slate-800/60 rounded-2xl shadow-xl ring-1 ring-white/10 backdrop-blur p-6 sm:p-8">
+      <section id="dropZone" class="bg-slate-800/60 rounded-2xl shadow-xl ring-1 ring-white/10 backdrop-blur p-6 sm:p-8 transition-shadow duration-200">
         <header class="mb-6">
           <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">SRT → JSON 変換ツール</h1>
           <p class="mt-2 text-slate-300 text-sm">ブラウザだけで完結。SRT を指定形式の JSON に変換してダウンロードできます。</p>
@@ -18,11 +25,14 @@
         <!-- アップロードエリア -->
         <div class="space-y-4">
           <div>
-            <label for="srtInput" class="block text-sm font-medium text-slate-200">SRTファイルを選択</label>
-            <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] items-center">
+            <label for="srtInput" class="block text-sm font-medium text-slate-200">SRTファイルを選択、またはここにドラッグ＆ドロップ</label>
+            <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_auto_auto] items-center">
               <input id="srtInput" type="file" accept=".srt" class="file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-600 file:text-white file:cursor-pointer file:hover:bg-indigo-500 file:transition w-full text-sm bg-slate-900/60 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2" />
               <button id="convertBtn" class="px-4 py-2 rounded-xl bg-indigo-600/60 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-600 transition" disabled>
                 変換
+              </button>
+              <button id="clearBtn" class="hidden px-4 py-2 rounded-xl bg-slate-600/60 text-white hover:bg-slate-600 transition">
+                クリア
               </button>
             </div>
             <p id="fileName" class="mt-2 text-xs text-slate-400 line-clamp-1">ファイル未選択</p>
@@ -33,10 +43,14 @@
             <button id="downloadBtn" class="hidden px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition">
               JSONをダウンロード
             </button>
+            <button id="copyBtn" class="hidden px-4 py-2 rounded-xl bg-sky-600 text-white hover:bg-sky-500 transition flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span id="copyBtnText">コピー</span>
+            </button>
             <span id="statusMsg" class="text-sm text-slate-300"></span>
           </div>
 
-          <!-- JSONプレビュー（任意） -->
+          <!-- JSONプレビュー -->
           <div>
             <label for="preview" class="block text-sm font-medium text-slate-200">プレビュー</label>
             <textarea id="preview" class="mt-2 w-full h-56 bg-slate-900/60 rounded-xl border border-slate-700 p-3 text-sm font-mono whitespace-pre resize-y" placeholder="ここに変換結果のJSONが表示されます" readonly></textarea>
@@ -94,13 +108,14 @@
        */
       function main() {
         // --- 1. State (状態) ---
-        // アプリケーションの状態を一元管理するオブジェクト
         const state = {
           file: null,
           isConverting: false,
+          isDragging: false,
           statusMessage: '',
           jsonContent: null,
           blobUrl: null,
+          copyButtonText: 'コピー',
           get downloadName() {
             if (!this.file) return 'result.json';
             const baseName = this.file.name.replace(/\.srt$/i, '');
@@ -110,7 +125,6 @@
 
         // --- 2. Services (UIに依存しないコアロジック) ---
         const services = {
-          /** ファイルをテキストとして非同期に読み込む */
           readFileAsText(file) {
             return new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -119,15 +133,11 @@
               reader.readAsText(file, 'utf-8');
             });
           },
-          /** Blob URLを生成し、古いものを破棄する */
           createBlobUrl(jsonContent) {
-            if (state.blobUrl) {
-              URL.revokeObjectURL(state.blobUrl);
-            }
+            if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
             const blob = new Blob([jsonContent], { type: 'application/json' });
             return URL.createObjectURL(blob);
           },
-          /** ダウンロードをトリガーする */
           triggerDownload(url, filename) {
             const a = document.createElement('a');
             a.href = url;
@@ -136,55 +146,61 @@
             a.click();
             document.body.removeChild(a);
           },
+          async copyToClipboard(text) {
+            if (!navigator.clipboard) {
+              throw new Error('クリップボードAPIはサポートされていません。');
+            }
+            await navigator.clipboard.writeText(text);
+          },
         };
 
         // --- 3. View (UIの描画) ---
         const view = {
-          // DOM要素への参照
           elements: {
+            dropZone: document.getElementById('dropZone'),
             srtInput: document.getElementById('srtInput'),
             convertBtn: document.getElementById('convertBtn'),
+            clearBtn: document.getElementById('clearBtn'),
             downloadBtn: document.getElementById('downloadBtn'),
+            copyBtn: document.getElementById('copyBtn'),
+            copyBtnText: document.getElementById('copyBtnText'),
             fileNameEl: document.getElementById('fileName'),
             statusMsg: document.getElementById('statusMsg'),
             preview: document.getElementById('preview'),
           },
-          /** 現在のstateに基づいてUI全体を再描画する */
           render() {
-            const { file, isConverting, statusMessage, jsonContent, blobUrl } = state;
+            const { file, isConverting, isDragging, statusMessage, jsonContent, blobUrl, copyButtonText } = state;
             
-            // ファイル名表示
             this.elements.fileNameEl.textContent = file ? file.name : 'ファイル未選択';
-            
-            // 変換ボタンの状態
             this.elements.convertBtn.disabled = !file || isConverting;
-            
-            // ステータスメッセージ
+            this.elements.clearBtn.classList.toggle('hidden', !file);
             this.elements.statusMsg.textContent = statusMessage;
-            
-            // プレビュー表示
             this.elements.preview.value = jsonContent || '';
             
-            // ダウンロードボタンの表示/非表示
-            this.elements.downloadBtn.classList.toggle('hidden', !blobUrl);
+            const hasResult = !!blobUrl;
+            this.elements.downloadBtn.classList.toggle('hidden', !hasResult);
+            this.elements.copyBtn.classList.toggle('hidden', !hasResult);
+            this.elements.copyBtnText.textContent = copyButtonText;
+            
+            this.elements.dropZone.classList.toggle('drag-over', isDragging);
           },
         };
 
         // --- 4. Controller (イベントとロジックの結合) ---
         const controller = {
-          /** ファイル選択時の処理 */
-          async handleFileChange(event) {
-            state.file = event.target.files?.[0] || null;
+          _setFile(file) {
+            state.file = file;
             state.isConverting = false;
             state.statusMessage = '';
             state.jsonContent = null;
-            state.blobUrl = services.createBlobUrl(''); // 古いURLを破棄
-            URL.revokeObjectURL(state.blobUrl);
+            if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
             state.blobUrl = null;
-            
             view.render();
           },
-          /** 変換ボタンクリック時の処理 */
+          handleFileChange(event) {
+            const file = event.target.files?.[0] || null;
+            controller._setFile(file);
+          },
           async handleConvert() {
             if (!state.file || state.isConverting) return;
 
@@ -198,41 +214,81 @@
 
               if (!jsonData?.length) {
                 state.statusMessage = '変換できるエントリが見つかりませんでした。';
-                state.jsonContent = null;
-                state.blobUrl = null;
               } else {
                 state.jsonContent = JSON.stringify(jsonData, null, 2);
                 state.blobUrl = services.createBlobUrl(state.jsonContent);
-                state.statusMessage = '変換完了！「JSONをダウンロード」をクリックしてください。';
+                state.statusMessage = '変換完了！';
               }
             } catch (error) {
               console.error('Conversion Error:', error);
               state.statusMessage = 'エラーが発生しました。ファイル形式を確認してください。';
-              state.jsonContent = null;
-              state.blobUrl = null;
             } finally {
               state.isConverting = false;
               view.render();
             }
           },
-          /** ダウンロードボタンクリック時の処理 */
           handleDownload() {
             if (!state.blobUrl) return;
             services.triggerDownload(state.blobUrl, state.downloadName);
           },
+          async handleCopy() {
+            if (!state.jsonContent) return;
+            try {
+              await services.copyToClipboard(state.jsonContent);
+              state.copyButtonText = 'コピーしました！';
+              view.render();
+              setTimeout(() => {
+                state.copyButtonText = 'コピー';
+                view.render();
+              }, 2000);
+            } catch (err) {
+              state.statusMessage = 'コピーに失敗しました。';
+              view.render();
+            }
+          },
+          handleClear() {
+            view.elements.srtInput.value = ''; // ファイル入力をリセット
+            controller._setFile(null);
+          },
+          handleDragOver(event) {
+            event.preventDefault();
+            state.isDragging = true;
+            view.render();
+          },
+          handleDragLeave(event) {
+            event.preventDefault();
+            state.isDragging = false;
+            view.render();
+          },
+          handleDrop(event) {
+            event.preventDefault();
+            state.isDragging = false;
+            const file = event.dataTransfer?.files?.[0];
+            if (file && file.name.toLowerCase().endsWith('.srt')) {
+              view.elements.srtInput.files = event.dataTransfer.files; // inputにもファイルをセット
+              controller._setFile(file);
+            } else {
+              state.statusMessage = 'SRTファイルのみドロップできます。';
+              view.render();
+            }
+          },
         };
 
         // --- 初期化 ---
-        // イベントリスナーをセットアップ
-        view.elements.srtInput.addEventListener('change', controller.handleFileChange);
-        view.elements.convertBtn.addEventListener('click', controller.handleConvert);
-        view.elements.downloadBtn.addEventListener('click', controller.handleDownload);
+        const { elements } = view;
+        elements.srtInput.addEventListener('change', controller.handleFileChange);
+        elements.convertBtn.addEventListener('click', controller.handleConvert);
+        elements.downloadBtn.addEventListener('click', controller.handleDownload);
+        elements.copyBtn.addEventListener('click', controller.handleCopy);
+        elements.clearBtn.addEventListener('click', controller.handleClear);
+        
+        elements.dropZone.addEventListener('dragover', controller.handleDragOver);
+        elements.dropZone.addEventListener('dragleave', controller.handleDragLeave);
+        elements.dropZone.addEventListener('drop', controller.handleDrop);
 
-        // 初期描画
         view.render();
       }
 
-      // アプリケーションを実行
       main();
     </script>
   </body>
